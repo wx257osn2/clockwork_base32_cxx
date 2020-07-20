@@ -32,3 +32,7 @@ void use_clockwork(){
   }
 }
 ```
+
+### Playground
+
+[Wandbox](https://wandbox.org/permlink/OIaiPE3zI6Vq1bJ2)
