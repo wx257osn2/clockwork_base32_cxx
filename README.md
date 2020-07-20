@@ -5,7 +5,7 @@ See [Clockwork Base32 Specification](https://gist.github.com/szktty/228f85794e41
 
 ## Usage
 
-```
+```cpp
 #include<cstdint>
 #include<string_view>
 #include<vector>
