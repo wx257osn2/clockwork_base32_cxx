@@ -18,3 +18,15 @@ jobs:
 
     - name: run test
       run: ./test
+
+  benchmark:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: build benchmark
+      run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench bench.cpp
+
+    - name: run benchmark
+      run: ./bench
