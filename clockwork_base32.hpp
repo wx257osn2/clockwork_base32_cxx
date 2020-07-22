@@ -72,6 +72,12 @@ static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size,
     offset += 5;
   }
   offset *= 8;
+  if(i >= 5){
+    const auto b = detail::read_bits<0>(inputs + offset/8);
+    *outputs++ = symbols[b];
+    offset += 5;
+    i -= 5;
+  }
   for(; i >= 5; i -= 5){
     const auto b = detail::read_bits(inputs, offset);
     *outputs++ = symbols[b];
