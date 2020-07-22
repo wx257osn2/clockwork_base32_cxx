@@ -29,8 +29,11 @@ jobs:
       run: |
         g++ --version
         clang++ --version
+        echo
         uname -a
+        echo
         cat /etc/os-release
+        echo
         cat /proc/cpuinfo | grep "model name"
 
     - name: build benchmark with g++
