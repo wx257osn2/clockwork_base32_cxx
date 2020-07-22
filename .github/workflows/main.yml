@@ -18,3 +18,32 @@ jobs:
 
     - name: run test
       run: ./test
+
+  benchmark:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: print environment informations
+      run: |
+        g++ --version
+        clang++ --version
+        echo
+        uname -a
+        echo
+        cat /etc/os-release
+        echo
+        cat /proc/cpuinfo | grep "model name"
+
+    - name: build benchmark with g++
+      run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench_g++ bench.cpp
+
+    - name: build benchmark with clang++
+      run: clang++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench_clang++ bench.cpp
+
+    - name: run benchmark built with g++
+      run: ./bench_g++
+
+    - name: run benchmark built with clang++
+      run: ./bench_clang++
