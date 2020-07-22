@@ -8,15 +8,33 @@
 
 namespace clockwork{
 
+namespace detail{
+
 constexpr std::uint8_t read_bits(const std::uint8_t* src, std::size_t offset, std::size_t count = 5, std::uint8_t ret = 0){
   if(count == 0)
     return ret;
-  const std::uint8_t *pos = src + offset / 8;
+  const std::uint8_t*const pos = src + offset / 8;
   const std::size_t bits = offset % 8;
   const std::size_t use = std::min(8 - bits, count);
   const std::uint8_t mask = (1 << use) - 1;
   const std::size_t off = 8 - use;
   return read_bits(src, offset + use, count - use, (ret << use) | (((*pos << bits) & (mask << off)) >> off));
+}
+
+template<std::size_t Offset, std::size_t Count = 5>
+constexpr std::uint8_t read_bits(const std::uint8_t* src, std::uint8_t ret = 0){
+  if constexpr(Count == 0)
+    return ret;
+  else{
+    const std::uint8_t*const pos = src + Offset / 8;
+    constexpr std::size_t bits = Offset % 8;
+    constexpr std::size_t use = std::min(8 - bits, Count);
+    constexpr std::uint8_t mask = (1 << use) - 1;
+    constexpr std::size_t off = 8 - use;
+    return read_bits<Offset + use, Count - use>(src, (ret << use) | (((*pos << bits) & (mask << off)) >> off));
+  }
+}
+
 }
 
 static constexpr std::size_t calc_encoded_size(std::size_t input_size)noexcept{
@@ -33,13 +51,40 @@ static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size,
   };
   std::size_t offset = 0;
   std::size_t i = input_size * 8;
+  for(; i >= 5*8; i -= 5*8){
+    const auto in = inputs + offset;
+    const auto b0 = detail::read_bits< 0>(in);
+    const auto b1 = detail::read_bits< 5>(in);
+    const auto b2 = detail::read_bits<10>(in);
+    const auto b3 = detail::read_bits<15>(in);
+    const auto b4 = detail::read_bits<20>(in);
+    const auto b5 = detail::read_bits<25>(in);
+    const auto b6 = detail::read_bits<30>(in);
+    const auto b7 = detail::read_bits<35>(in);
+    *outputs++ = symbols[b0];
+    *outputs++ = symbols[b1];
+    *outputs++ = symbols[b2];
+    *outputs++ = symbols[b3];
+    *outputs++ = symbols[b4];
+    *outputs++ = symbols[b5];
+    *outputs++ = symbols[b6];
+    *outputs++ = symbols[b7];
+    offset += 5;
+  }
+  offset *= 8;
+  if(i >= 5){
+    const auto b = detail::read_bits<0>(inputs + offset/8);
+    *outputs++ = symbols[b];
+    offset += 5;
+    i -= 5;
+  }
   for(; i >= 5; i -= 5){
-    const auto b = read_bits(inputs, offset);
+    const auto b = detail::read_bits(inputs, offset);
     *outputs++ = symbols[b];
     offset += 5;
   }
   if(i > 0){
-    const auto b = read_bits(inputs, offset, i);
+    const auto b = detail::read_bits(inputs, offset, i);
     *outputs++ = symbols[b << (5 - i)];
   }
 }
@@ -78,14 +123,12 @@ static constexpr std::size_t calc_decoded_size(std::size_t input_size)noexcept{
   return input_size * 5 / 8;
 }
 
+namespace detail{
+
 struct bits_writer{
   std::uint8_t* o;
   std::uint8_t v = 0;
   std::uint8_t n = 0;
-  constexpr bits_writer& shift(){
-    v = v << (8 - n);
-    return *this;
-  }
   constexpr void flush(){
     *o++ = v;
     n = 0;
@@ -93,8 +136,8 @@ struct bits_writer{
   }
   constexpr bits_writer& operator()(std::uint8_t bits, std::uint8_t data){ //data must have no bits on upper
     if(n + bits <= 8){
-      v =  (v << bits) | data;
       n += bits;
+      v |= data << (8-n);
       if(n == 8)
         flush();
       return *this;
@@ -102,15 +145,36 @@ struct bits_writer{
     else{
       const std::uint8_t lb = 8 - n;
       const std::uint8_t nb = bits - lb;
-      v = (v << lb) | (data >> nb);
+      v |= (data >> nb);
       flush();
       const std::uint8_t xb = 8 - nb;
-      v = data << xb >> xb;
+      v = data << xb;
       n = nb;
     }
     return *this;
   }
+  template<std::size_t Offset, std::size_t Bits = 5>
+  constexpr bits_writer& force_write(std::uint8_t data){
+    if constexpr(Bits == 0)
+      return *this;
+    else{
+      constexpr std::size_t bits = Offset % 8;
+      constexpr bool full = 8-bits <= Bits;
+      constexpr std::size_t use = full ? 8 - bits : Bits;
+      constexpr std::size_t remain = Bits - use;
+      constexpr std::uint8_t mask = ((1 << use) - 1) << remain;
+      constexpr std::size_t off = 8 - bits - use;
+      v |= (data & mask) << off >> remain;
+      if constexpr(full)
+        flush();
+      constexpr std::size_t shift = 8 - remain;
+      return force_write<Offset + use, remain>(static_cast<std::uint8_t>(data << shift) >> shift);
+    }
+    return *this;
+  }
 };
+
+}
 
 static constexpr void decode(const char* inputs, std::size_t input_size, std::uint8_t* outputs){
   constexpr std::int8_t symbols[256] = {
@@ -142,9 +206,62 @@ static constexpr void decode(const char* inputs, std::size_t input_size, std::ui
     -1, -1, -1, -1, -1, -1                  /* 250-256 */
   };
   std::size_t total = 0;
-  bits_writer o{outputs};
+  detail::bits_writer o{outputs};
+  std::size_t i = 0;
   const std::size_t back = input_size - 1;
-  for(std::size_t i = 0; i < back; ++i){
+  const std::size_t end = back / 8 * 8;
+  for(; i < end; i += 8){
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write< 0>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+1])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write< 5>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+2])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<10>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+3])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<15>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+4])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<20>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+5])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<25>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+6])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<30>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+7])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<35>(static_cast<std::uint8_t>(sym));
+    }
+    total += 40;
+  }
+  for(; i < back; ++i){
     const auto sym = symbols[static_cast<std::uint8_t>(inputs[i])];
     if(sym < 0)
       throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
@@ -161,7 +278,7 @@ static constexpr void decode(const char* inputs, std::size_t input_size, std::ui
       n = 5 - padding;
       sym >>= padding;
     }
-    o(n, static_cast<std::uint8_t>(sym)).shift().flush();
+    o(n, static_cast<std::uint8_t>(sym)).flush();
     total += n;
   }
   if(total % 8 != 0)
