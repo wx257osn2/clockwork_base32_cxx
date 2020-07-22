@@ -129,10 +129,6 @@ struct bits_writer{
   std::uint8_t* o;
   std::uint8_t v = 0;
   std::uint8_t n = 0;
-  constexpr bits_writer& shift(){
-    v = v << (8 - n);
-    return *this;
-  }
   constexpr void flush(){
     *o++ = v;
     n = 0;
@@ -140,8 +136,8 @@ struct bits_writer{
   }
   constexpr bits_writer& operator()(std::uint8_t bits, std::uint8_t data){ //data must have no bits on upper
     if(n + bits <= 8){
-      v =  (v << bits) | data;
       n += bits;
+      v |= data << (8-n);
       if(n == 8)
         flush();
       return *this;
@@ -149,10 +145,10 @@ struct bits_writer{
     else{
       const std::uint8_t lb = 8 - n;
       const std::uint8_t nb = bits - lb;
-      v = (v << lb) | (data >> nb);
+      v |= (data >> nb);
       flush();
       const std::uint8_t xb = 8 - nb;
-      v = data << xb >> xb;
+      v = data << xb;
       n = nb;
     }
     return *this;
@@ -210,7 +206,7 @@ static constexpr void decode(const char* inputs, std::size_t input_size, std::ui
       n = 5 - padding;
       sym >>= padding;
     }
-    o(n, static_cast<std::uint8_t>(sym)).shift().flush();
+    o(n, static_cast<std::uint8_t>(sym)).flush();
     total += n;
   }
   if(total % 8 != 0)
