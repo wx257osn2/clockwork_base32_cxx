@@ -52,7 +52,7 @@ static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size,
   std::size_t offset = 0;
   std::size_t i = input_size * 8;
   for(; i >= 5*8; i -= 5*8){
-    const auto in = inputs + offset / 8;
+    const auto in = inputs + offset;
     const auto b0 = detail::read_bits< 0>(in);
     const auto b1 = detail::read_bits< 5>(in);
     const auto b2 = detail::read_bits<10>(in);
@@ -69,8 +69,9 @@ static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size,
     *outputs++ = symbols[b5];
     *outputs++ = symbols[b6];
     *outputs++ = symbols[b7];
-    offset += 5*8;
+    offset += 5;
   }
+  offset *= 8;
   for(; i >= 5; i -= 5){
     const auto b = detail::read_bits(inputs, offset);
     *outputs++ = symbols[b];
