@@ -8,6 +8,8 @@
 
 namespace clockwork{
 
+namespace detail{
+
 constexpr std::uint8_t read_bits(const std::uint8_t* src, std::size_t offset, std::size_t count = 5, std::uint8_t ret = 0){
   if(count == 0)
     return ret;
@@ -17,6 +19,8 @@ constexpr std::uint8_t read_bits(const std::uint8_t* src, std::size_t offset, st
   const std::uint8_t mask = (1 << use) - 1;
   const std::size_t off = 8 - use;
   return read_bits(src, offset + use, count - use, (ret << use) | (((*pos << bits) & (mask << off)) >> off));
+}
+
 }
 
 static constexpr std::size_t calc_encoded_size(std::size_t input_size)noexcept{
@@ -34,12 +38,12 @@ static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size,
   std::size_t offset = 0;
   std::size_t i = input_size * 8;
   for(; i >= 5; i -= 5){
-    const auto b = read_bits(inputs, offset);
+    const auto b = detail::read_bits(inputs, offset);
     *outputs++ = symbols[b];
     offset += 5;
   }
   if(i > 0){
-    const auto b = read_bits(inputs, offset, i);
+    const auto b = detail::read_bits(inputs, offset, i);
     *outputs++ = symbols[b << (5 - i)];
   }
 }
@@ -78,6 +82,8 @@ static constexpr std::size_t calc_decoded_size(std::size_t input_size)noexcept{
   return input_size * 5 / 8;
 }
 
+namespace detail{
+
 struct bits_writer{
   std::uint8_t* o;
   std::uint8_t v = 0;
@@ -112,6 +118,8 @@ struct bits_writer{
   }
 };
 
+}
+
 static constexpr void decode(const char* inputs, std::size_t input_size, std::uint8_t* outputs){
   constexpr std::int8_t symbols[256] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 0-9 */
@@ -142,7 +150,7 @@ static constexpr void decode(const char* inputs, std::size_t input_size, std::ui
     -1, -1, -1, -1, -1, -1                  /* 250-256 */
   };
   std::size_t total = 0;
-  bits_writer o{outputs};
+  detail::bits_writer o{outputs};
   const std::size_t back = input_size - 1;
   for(std::size_t i = 0; i < back; ++i){
     const auto sym = symbols[static_cast<std::uint8_t>(inputs[i])];
