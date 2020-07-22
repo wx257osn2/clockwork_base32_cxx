@@ -25,8 +25,22 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: build benchmark
-      run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench bench.cpp
+    - name: print environment informations
+      run: |
+        g++ --version
+        clang++ --version
+        uname -a
+        cat /etc/os-release
+        cat /proc/cpuinfo | grep "model name"
 
-    - name: run benchmark
-      run: ./bench
+    - name: build benchmark with g++
+      run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench_g++ bench.cpp
+
+    - name: build benchmark with clang++
+      run: clang++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench_clang++ bench.cpp
+
+    - name: run benchmark built with g++
+      run: ./bench_g++
+
+    - name: run benchmark built with clang++
+      run: ./bench_clang++
