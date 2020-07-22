@@ -21,6 +21,20 @@ constexpr std::uint8_t read_bits(const std::uint8_t* src, std::size_t offset, st
   return read_bits(src, offset + use, count - use, (ret << use) | (((*pos << bits) & (mask << off)) >> off));
 }
 
+template<std::size_t Offset, std::size_t Count = 5>
+constexpr std::uint8_t read_bits(const std::uint8_t* src, std::uint8_t ret = 0){
+  if constexpr(Count == 0)
+    return ret;
+  else{
+    const std::uint8_t *pos = src + Offset / 8;
+    constexpr std::size_t bits = Offset % 8;
+    constexpr std::size_t use = std::min(8 - bits, Count);
+    constexpr std::uint8_t mask = (1 << use) - 1;
+    constexpr std::size_t off = 8 - use;
+    return read_bits<Offset + use, Count - use>(src, (ret << use) | (((*pos << bits) & (mask << off)) >> off));
+  }
+}
+
 }
 
 static constexpr std::size_t calc_encoded_size(std::size_t input_size)noexcept{
@@ -37,6 +51,26 @@ static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size,
   };
   std::size_t offset = 0;
   std::size_t i = input_size * 8;
+  for(; i >= 5*8; i -= 5*8){
+    const auto in = inputs + offset / 8;
+    const auto b0 = detail::read_bits< 0>(in);
+    const auto b1 = detail::read_bits< 5>(in);
+    const auto b2 = detail::read_bits<10>(in);
+    const auto b3 = detail::read_bits<15>(in);
+    const auto b4 = detail::read_bits<20>(in);
+    const auto b5 = detail::read_bits<25>(in);
+    const auto b6 = detail::read_bits<30>(in);
+    const auto b7 = detail::read_bits<35>(in);
+    *outputs++ = symbols[b0];
+    *outputs++ = symbols[b1];
+    *outputs++ = symbols[b2];
+    *outputs++ = symbols[b3];
+    *outputs++ = symbols[b4];
+    *outputs++ = symbols[b5];
+    *outputs++ = symbols[b6];
+    *outputs++ = symbols[b7];
+    offset += 5*8;
+  }
   for(; i >= 5; i -= 5){
     const auto b = detail::read_bits(inputs, offset);
     *outputs++ = symbols[b];
