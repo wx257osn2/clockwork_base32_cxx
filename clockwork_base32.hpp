@@ -13,7 +13,7 @@ namespace detail{
 constexpr std::uint8_t read_bits(const std::uint8_t* src, std::size_t offset, std::size_t count = 5, std::uint8_t ret = 0){
   if(count == 0)
     return ret;
-  const std::uint8_t *pos = src + offset / 8;
+  const std::uint8_t*const pos = src + offset / 8;
   const std::size_t bits = offset % 8;
   const std::size_t use = std::min(8 - bits, count);
   const std::uint8_t mask = (1 << use) - 1;
@@ -26,7 +26,7 @@ constexpr std::uint8_t read_bits(const std::uint8_t* src, std::uint8_t ret = 0){
   if constexpr(Count == 0)
     return ret;
   else{
-    const std::uint8_t *pos = src + Offset / 8;
+    const std::uint8_t*const pos = src + Offset / 8;
     constexpr std::size_t bits = Offset % 8;
     constexpr std::size_t use = std::min(8 - bits, Count);
     constexpr std::uint8_t mask = (1 << use) - 1;
