@@ -153,6 +153,25 @@ struct bits_writer{
     }
     return *this;
   }
+  template<std::size_t Offset, std::size_t Bits = 5>
+  constexpr bits_writer& force_write(std::uint8_t data){
+    if constexpr(Bits == 0)
+      return *this;
+    else{
+      constexpr std::size_t bits = Offset % 8;
+      constexpr bool full = 8-bits <= Bits;
+      constexpr std::size_t use = full ? 8 - bits : Bits;
+      constexpr std::size_t remain = Bits - use;
+      constexpr std::uint8_t mask = ((1 << use) - 1) << remain;
+      constexpr std::size_t off = 8 - bits - use;
+      v |= (data & mask) << off >> remain;
+      if constexpr(full)
+        flush();
+      constexpr std::size_t shift = 8 - remain;
+      return force_write<Offset + use, remain>(static_cast<std::uint8_t>(data << shift) >> shift);
+    }
+    return *this;
+  }
 };
 
 }
@@ -188,8 +207,61 @@ static constexpr void decode(const char* inputs, std::size_t input_size, std::ui
   };
   std::size_t total = 0;
   detail::bits_writer o{outputs};
+  std::size_t i = 0;
   const std::size_t back = input_size - 1;
-  for(std::size_t i = 0; i < back; ++i){
+  const std::size_t end = back / 8 * 8;
+  for(; i < end; i += 8){
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write< 0>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+1])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write< 5>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+2])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<10>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+3])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<15>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+4])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<20>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+5])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<25>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+6])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<30>(static_cast<std::uint8_t>(sym));
+    }
+    {
+      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+7])];
+      if(sym < 0)
+        throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
+      o.force_write<35>(static_cast<std::uint8_t>(sym));
+    }
+    total += 40;
+  }
+  for(; i < back; ++i){
     const auto sym = symbols[static_cast<std::uint8_t>(inputs[i])];
     if(sym < 0)
       throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
