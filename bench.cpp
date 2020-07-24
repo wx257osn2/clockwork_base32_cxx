@@ -4,6 +4,9 @@
 #include<cstdint>
 #include<random>
 #include<numeric>
+#include<algorithm>
+#include<cstddef>
+#include<string>
 #include"clockwork_base32.hpp"
 
 template<typename RNG>
