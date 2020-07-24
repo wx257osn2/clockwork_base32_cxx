@@ -1,3 +1,6 @@
+#ifndef CLOCKWORK_BASE32_HPP_INCLUDED_
+#define CLOCKWORK_BASE32_HPP_INCLUDED_
+
 #include<cstdint>
 #include<cstddef>
 #include<algorithm>
@@ -310,3 +313,5 @@ static inline void decode(std::string_view s, std::byte* outputs){
 }
 
 }
+
+#endif//CLOCKWORK_BASE32_HPP_INCLUDED_
