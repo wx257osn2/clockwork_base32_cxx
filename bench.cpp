@@ -27,22 +27,23 @@ int main(int argc, char** argv){
     iteration = std::stoul(argv[2]);
   std::mt19937 rand(std::chrono::high_resolution_clock::now().time_since_epoch().count());
   const auto data = make_data(rand, size);
-  std::vector<std::chrono::microseconds> encode_times(iteration);
+  using microseconds = std::chrono::duration<float, std::micro>;
+  std::vector<microseconds> encode_times(iteration);
   for(auto&& x : encode_times){
     const auto d = data;
     const auto start = std::chrono::high_resolution_clock::now();
     const auto encoded = clockwork::encode(d);
     const auto end = std::chrono::high_resolution_clock::now();
-    x = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    x = microseconds{end - start};
   }
   const auto encoded = clockwork::encode(data);
-  std::vector<std::chrono::microseconds> decode_times(iteration);
+  std::vector<microseconds> decode_times(iteration);
   for(auto&& x : decode_times){
     const auto e = encoded;
     const auto start = std::chrono::high_resolution_clock::now();
     const auto decoded = clockwork::decode<std::uint8_t>(e);
     const auto end = std::chrono::high_resolution_clock::now();
-    x = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    x = microseconds{end - start};
   }
   const auto decoded = clockwork::decode<std::uint8_t>(encoded);
   if(data != decoded){
@@ -51,6 +52,6 @@ int main(int argc, char** argv){
   }
   std::sort(encode_times.begin(), encode_times.end());
   std::sort(decode_times.begin(), decode_times.end());
-  std::cout << "encode: " << static_cast<double>(std::accumulate(encode_times.begin(), encode_times.end(), 0ull, [](auto l, std::chrono::microseconds r){return l + r.count();})) / iteration << '(' << encode_times.front().count() << '-' << encode_times.back().count() << ")\n"
-               "decode: " << static_cast<double>(std::accumulate(decode_times.begin(), decode_times.end(), 0ull, [](auto l, std::chrono::microseconds r){return l + r.count();})) / iteration << '(' << decode_times.front().count() << '-' << decode_times.back().count() << ')' << std::endl;
+  std::cout << "encode: " << std::accumulate(encode_times.begin(), encode_times.end(), 0.f, [](auto l, microseconds r){return l + r.count();}) / iteration << '(' << encode_times.front().count() << '-' << encode_times.back().count() << ")\n"
+               "decode: " << std::accumulate(decode_times.begin(), decode_times.end(), 0.f, [](auto l, microseconds r){return l + r.count();}) / iteration << '(' << decode_times.front().count() << '-' << decode_times.back().count() << ')' << std::endl;
 }
