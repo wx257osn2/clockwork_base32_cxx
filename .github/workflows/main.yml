@@ -37,10 +37,10 @@ jobs:
         cat /proc/cpuinfo | grep "model name"
 
     - name: build benchmark with g++
-      run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench_g++ bench.cpp
+      run: g++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -march=native -obench_g++ bench.cpp
 
     - name: build benchmark with clang++
-      run: clang++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -obench_clang++ bench.cpp
+      run: clang++ -std=c++17 -Wall -Wextra -Werror -pedantic-errors -O3 -march=native -obench_clang++ bench.cpp
 
     - name: run benchmark built with g++
       run: ./bench_g++
