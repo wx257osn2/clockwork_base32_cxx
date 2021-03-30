@@ -45,13 +45,55 @@ static constexpr std::size_t calc_encoded_size(std::size_t input_size)noexcept{
   return s / 5 + (s % 5 == 0 ? 0 : 1);
 }
 
+namespace detail{
+
+namespace{
+
+namespace symbols{
+
+constexpr char encode[32] = {
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
+  'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X',
+  'Y', 'Z'
+};
+
+constexpr std::int8_t decode[256] = {
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 0-9 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 10-19 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 20-29 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 30-39 */
+  -1, -1, -1, -1, -1, -1, -1, -1,  0,  1, /* 40-49 */
+   2,  3,  4,  5,  6,  7,  8,  9,  0, -1, /* 50-59 */
+  -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, /* 60-69 */
+  15, 16, 17,  1, 18, 19,  1, 20, 21,  0, /* 70-79 */
+  22, 23, 24, 25, 26, -2, 27, 28, 29, 30, /* 80-89 */
+  31, -1, -1, -1, -1, -1, -1, 10, 11, 12, /* 90-99 */
+  13, 14, 15, 16, 17,  1, 18, 19,  1, 20, /* 100-109 */
+  21,  0, 22, 23, 24, 25, 26, -1, 27, 28, /* 110-119 */
+  29, 30, 31, -1, -1, -1, -1, -1, -1, -1, /* 120-129 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 130-109 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 140-109 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 150-109 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 160-109 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 170-109 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 180-109 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 190-109 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 200-209 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 210-209 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 220-209 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 230-209 */
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 240-209 */
+  -1, -1, -1, -1, -1, -1                  /* 250-256 */
+};
+
+}
+
+}
+
+}
+
 static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size, char* outputs){
-  constexpr char symbols[32] = {
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
-    'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X',
-    'Y', 'Z'
-  };
   std::size_t offset = 0;
   std::size_t i = input_size * 8;
   for(; i >= 5*8; i -= 5*8){
@@ -64,31 +106,31 @@ static constexpr void encode(const std::uint8_t* inputs, std::size_t input_size,
     const auto b5 = detail::read_bits<25>(in);
     const auto b6 = detail::read_bits<30>(in);
     const auto b7 = detail::read_bits<35>(in);
-    *outputs++ = symbols[b0];
-    *outputs++ = symbols[b1];
-    *outputs++ = symbols[b2];
-    *outputs++ = symbols[b3];
-    *outputs++ = symbols[b4];
-    *outputs++ = symbols[b5];
-    *outputs++ = symbols[b6];
-    *outputs++ = symbols[b7];
+    *outputs++ = detail::symbols::encode[b0];
+    *outputs++ = detail::symbols::encode[b1];
+    *outputs++ = detail::symbols::encode[b2];
+    *outputs++ = detail::symbols::encode[b3];
+    *outputs++ = detail::symbols::encode[b4];
+    *outputs++ = detail::symbols::encode[b5];
+    *outputs++ = detail::symbols::encode[b6];
+    *outputs++ = detail::symbols::encode[b7];
     offset += 5;
   }
   offset *= 8;
   if(i >= 5){
     const auto b = detail::read_bits<0>(inputs + offset/8);
-    *outputs++ = symbols[b];
+    *outputs++ = detail::symbols::encode[b];
     offset += 5;
     i -= 5;
   }
   for(; i >= 5; i -= 5){
     const auto b = detail::read_bits(inputs, offset);
-    *outputs++ = symbols[b];
+    *outputs++ = detail::symbols::encode[b];
     offset += 5;
   }
   if(i > 0){
     const auto b = detail::read_bits(inputs, offset, i);
-    *outputs++ = symbols[b << (5 - i)];
+    *outputs++ = detail::symbols::encode[b << (5 - i)];
   }
 }
 
@@ -180,34 +222,6 @@ struct bits_writer{
 }
 
 static constexpr void decode(const char* inputs, std::size_t input_size, std::uint8_t* outputs){
-  constexpr std::int8_t symbols[256] = {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 0-9 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 10-19 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 20-29 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 30-39 */
-    -1, -1, -1, -1, -1, -1, -1, -1,  0,  1, /* 40-49 */
-     2,  3,  4,  5,  6,  7,  8,  9,  0, -1, /* 50-59 */
-    -1, -1, -1, -1, -1, 10, 11, 12, 13, 14, /* 60-69 */
-    15, 16, 17,  1, 18, 19,  1, 20, 21,  0, /* 70-79 */
-    22, 23, 24, 25, 26, -2, 27, 28, 29, 30, /* 80-89 */
-    31, -1, -1, -1, -1, -1, -1, 10, 11, 12, /* 90-99 */
-    13, 14, 15, 16, 17,  1, 18, 19,  1, 20, /* 100-109 */
-    21,  0, 22, 23, 24, 25, 26, -1, 27, 28, /* 110-119 */
-    29, 30, 31, -1, -1, -1, -1, -1, -1, -1, /* 120-129 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 130-109 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 140-109 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 150-109 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 160-109 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 170-109 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 180-109 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 190-109 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 200-209 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 210-209 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 220-209 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 230-209 */
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /* 240-209 */
-    -1, -1, -1, -1, -1, -1                  /* 250-256 */
-  };
   std::size_t total = 0;
   detail::bits_writer o{outputs};
   std::size_t i = 0;
@@ -215,49 +229,49 @@ static constexpr void decode(const char* inputs, std::size_t input_size, std::ui
   const std::size_t end = back / 8 * 8;
   for(; i < end; i += 8){
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write< 0>(static_cast<std::uint8_t>(sym));
     }
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+1])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i+1])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write< 5>(static_cast<std::uint8_t>(sym));
     }
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+2])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i+2])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write<10>(static_cast<std::uint8_t>(sym));
     }
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+3])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i+3])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write<15>(static_cast<std::uint8_t>(sym));
     }
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+4])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i+4])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write<20>(static_cast<std::uint8_t>(sym));
     }
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+5])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i+5])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write<25>(static_cast<std::uint8_t>(sym));
     }
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+6])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i+6])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write<30>(static_cast<std::uint8_t>(sym));
     }
     {
-      const auto sym = symbols[static_cast<std::uint8_t>(inputs[i+7])];
+      const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i+7])];
       if(sym < 0)
         throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
       o.force_write<35>(static_cast<std::uint8_t>(sym));
@@ -265,14 +279,14 @@ static constexpr void decode(const char* inputs, std::size_t input_size, std::ui
     total += 40;
   }
   for(; i < back; ++i){
-    const auto sym = symbols[static_cast<std::uint8_t>(inputs[i])];
+    const auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[i])];
     if(sym < 0)
       throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
     o(5, static_cast<std::uint8_t>(sym));
     total += 5;
   }
   {
-    auto sym = symbols[static_cast<std::uint8_t>(inputs[back])];
+    auto sym = detail::symbols::decode[static_cast<std::uint8_t>(inputs[back])];
     if(sym < 0)
       throw std::invalid_argument(std::string{"invalid_symbol value "} + static_cast<char>(sym));
     std::uint8_t n = 5;
@@ -311,6 +325,8 @@ static inline void decode(const char* inputs, std::size_t input_size, std::byte*
 static inline void decode(std::string_view s, std::byte* outputs){
   decode(s, reinterpret_cast<std::uint8_t*>(outputs));
 }
+
+namespace detail::symbols{}
 
 }
 
