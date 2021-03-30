@@ -22,7 +22,7 @@ int main(int argc, char** argv){
   if(argc >= 2)
     if(const auto override_size = std::stoul(argv[1]))
       size = override_size;
-  std::size_t iteration = 1000;
+  std::size_t iteration = 5000;
   if(argc == 3)
     iteration = std::stoul(argv[2]);
   std::mt19937 rand(std::chrono::high_resolution_clock::now().time_since_epoch().count());
