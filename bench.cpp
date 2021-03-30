@@ -22,7 +22,7 @@ int main(int argc, char** argv){
   if(argc >= 2)
     if(const auto override_size = std::stoul(argv[1]))
       size = override_size;
-  std::size_t iteration = 1000;
+  std::size_t iteration = 5000;
   if(argc == 3)
     iteration = std::stoul(argv[2]);
   std::mt19937 rand(std::chrono::high_resolution_clock::now().time_since_epoch().count());
@@ -52,6 +52,6 @@ int main(int argc, char** argv){
   }
   std::sort(encode_times.begin(), encode_times.end());
   std::sort(decode_times.begin(), decode_times.end());
-  std::cout << "encode: " << std::accumulate(encode_times.begin(), encode_times.end(), 0.f, [](auto l, microseconds r){return l + r.count();}) / iteration << '(' << encode_times.front().count() << '-' << encode_times.back().count() << ")\n"
-               "decode: " << std::accumulate(decode_times.begin(), decode_times.end(), 0.f, [](auto l, microseconds r){return l + r.count();}) / iteration << '(' << decode_times.front().count() << '-' << decode_times.back().count() << ')' << std::endl;
+  std::cout << "encode: " << std::accumulate(encode_times.begin(), encode_times.end(), 0.f, [](auto l, microseconds r){return l + r.count();}) / iteration << '(' << encode_times.front().count() << '-' << encode_times.back().count() << ") [microsec]\n"
+               "decode: " << std::accumulate(decode_times.begin(), decode_times.end(), 0.f, [](auto l, microseconds r){return l + r.count();}) / iteration << '(' << decode_times.front().count() << '-' << decode_times.back().count() << ") [microsec]" << std::endl;
 }
